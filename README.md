@@ -8,6 +8,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
+| v15.16.0 | [`v15.16.0`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.16.0) | [`b0e2d3d`](https://github.com/w9jds/firebase-action/commit/b0e2d3d72d52c7e16467cde7282c9ddbe11a8aa0) |
 | v15.19.0 | [`v15.19.0`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.19.0) | [`a95a1d1`](https://github.com/w9jds/firebase-action/commit/a95a1d1dfeea8f7efbe0eb13fd3bf429cb4ac437) |
 
 ## Privacy
