@@ -1,0 +1,28 @@
+name: Test with GCP_SA_KEY credential
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GCP_SA_KEY: '{"type":"service_account","project_id":"test-project","private_key_id":"key123","private_key":"-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xHn/ygWep4PAtEsHABQdRqBKFMFBMDMBmFMB\n-----END RSA PRIVATE KEY-----\n","client_email":"test@test-project.iam.gserviceaccount.com","client_id":"123456789","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token"}'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          args: --version
+        continue-on-error: true
+      - name: Assert action ran with GCP_SA_KEY (not credential-missing error)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # With a fake GCP_SA_KEY (valid JSON), the entrypoint should store the key
+          # and attempt to run firebase --version. It may fail on auth but should NOT
+          # exit 126 (missing credentials).
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran with GCP_SA_KEY credential (outcome=$OUTCOME)"

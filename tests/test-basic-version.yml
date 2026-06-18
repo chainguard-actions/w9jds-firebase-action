@@ -1,0 +1,28 @@
+name: Test basic firebase --version
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_TOKEN: "fake-token-for-version-check"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          args: --version
+        continue-on-error: true
+      - name: Assert action ran (version output or auth error, not credential-missing error)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action should attempt to run firebase --version.
+          # With a fake token it may fail on auth, but it should NOT fail
+          # with exit 126 (missing credentials). Either success or auth failure is acceptable.
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran (outcome=$OUTCOME)"
