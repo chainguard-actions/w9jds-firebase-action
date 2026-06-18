@@ -14,6 +14,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | v15.19.0 | [`v15.19.0`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.19.0) | [`a95a1d1`](https://github.com/w9jds/firebase-action/commit/a95a1d1dfeea8f7efbe0eb13fd3bf429cb4ac437) |
 | v15.19.1 | [`v15.19.1`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.19.1) | [`b3c7251`](https://github.com/w9jds/firebase-action/commit/b3c725170700a48b168a32972e7aaa4c92bf1061) |
 | v15.20.0 | [`v15.20.0`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.20.0) | [`47ca9cd`](https://github.com/w9jds/firebase-action/commit/47ca9cd931889c1fb7bc67f51597278159cb7c9e) |
+| v15.21.0 | [`v15.21.0`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.21.0) | [`68b1c70`](https://github.com/w9jds/firebase-action/commit/68b1c70385289f30c520d3f50fbd666150f87c70) |
 
 ## Privacy
 
