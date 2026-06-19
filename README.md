@@ -1,20 +1,130 @@
-# w9jds/firebase-action
+# GitHub Actions for Firebase
 
-Wraps the firebase-tools CLI to enable common commands.
+This Action for [firebase-tools](https://github.com/firebase/firebase-tools) enables arbitrary actions with the `firebase` command-line client.
 
-Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/w9jds/firebase-action](https://github.com/w9jds/firebase-action).
+If you want a more flexible implementation, an early version of a rewrite is available here: [setup-firebase](https://github.com/w9jds/setup-firebase) that allows you to choose node and java version and run more than one command.
 
-## Versions
+## Inputs
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| v15.16.0 | [`v15.16.0`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.16.0) | [`b0e2d3d`](https://github.com/w9jds/firebase-action/commit/b0e2d3d72d52c7e16467cde7282c9ddbe11a8aa0) |
-| v15.17.0 | [`v15.17.0`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.17.0) | [`d0c9514`](https://github.com/w9jds/firebase-action/commit/d0c951464c912d53fdc73770a5711c96c5a88671) |
-| v15.18.0 | [`v15.18.0`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.18.0) | [`0a4f77d`](https://github.com/w9jds/firebase-action/commit/0a4f77dac6df6028b126dd9635acbb7ec0b714cc) |
-| v15.19.0 | [`v15.19.0`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.19.0) | [`a95a1d1`](https://github.com/w9jds/firebase-action/commit/a95a1d1dfeea8f7efbe0eb13fd3bf429cb4ac437) |
-| v15.19.1 | [`v15.19.1`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.19.1) | [`b3c7251`](https://github.com/w9jds/firebase-action/commit/b3c725170700a48b168a32972e7aaa4c92bf1061) |
-| v15.20.0 | [`v15.20.0`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.20.0) | [`47ca9cd`](https://github.com/w9jds/firebase-action/commit/47ca9cd931889c1fb7bc67f51597278159cb7c9e) |
-| v15.21.0 | [`v15.21.0`](https://github.com/chainguard-actions/w9jds-firebase-action/tree/v15.21.0) | [`68b1c70`](https://github.com/w9jds/firebase-action/commit/68b1c70385289f30c520d3f50fbd666150f87c70) |
+* `args` - **Required**. This is the arguments you want to use for the `firebase` cli
+
+## Outputs
+
+~~* `response` - The full response from the firebase command current run (Will most likely require a grep to get what you want, like URLS)~~
+
+_**Response has been removed for now as it caused loads of issues in the bash script**_
+
+
+## Environment variables
+
+* `GCP_SA_KEY` - **Required if FIREBASE_TOKEN is not set**. A **normal** service account key (json format) or a **base64 encoded** service account key with the needed permissions for what you are trying to deploy/update.
+  * Since the service account is using the App Engine default service account in the deploy process, it also needs the `Service Account User` role.
+  * If deploying functions, you would also need the `Cloud Functions Developer` role.
+    * If the deploy has scheduled functions, include the `Cloud Scheduler Admin` role.
+    * If the deploy requires access to secrets, include the `Secret Manager Viewer` role.
+    * If updating Firestore Rules, include the `Firebase Rules Admin` role.
+    * If the project is using Blocking functions (beforeCreate or beforeSignin) , include the `Firebase Functions Admin` role.
+  * If updating Firestore Indexes, include the `Cloud Datastore Index Admin` role.
+  * If deploying Hosting files, include the `Firebase Hosting Admin` role.
+  * If updating Remote Config, include the `Firebase Remote Config Admin` role.
+  * For more details: https://firebase.google.com/docs/hosting/github-integration
+
+* `FIREBASE_TOKEN` - **Required if GCP_SA_KEY is not set**. _**This method will soon be deprecated, use `GCP_SA_KEY` instead**_. The token to use for authentication. This token can be aquired through the `firebase login:ci` command.
+
+* `GOOGLE_APPLICATION_CREDENTIALS` - **Required if GCP_SA_KEY or FIREBASE_TOKEN is not set**. the location of a credential JSON file. For more details: https://cloud.google.com/docs/authentication/application-default-credentials#GAC
+
+* `PROJECT_ID` - **Optional**. To specify a specific project to use for all commands. Not required if you specify a project in your `.firebaserc` file. If you use this, you need to give `Viewer` permission roles to your service account otherwise the action will fail with authentication errors.
+
+* `PROJECT_PATH` - **Optional**. The path to the folder containing `firebase.json` if it doesn't exist at the root of your repository. e.g. `./my-app`.
+
+* `CONFIG_VALUES` - **Optional**. The configuration values for Firebase function that would normally be set with `firebase functions:config:set [value]`. Example: `CONFIG_VALUES: stripe.secret_key=SECRET_KEY zapier.secret_key=SECRET_KEY`.
+
+## Example
+
+To authenticate with Firebase, and deploy to Firebase Hosting:
+
+```yaml
+name: Build and Deploy
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@master
+      - name: Install Dependencies
+        run: npm install
+      - name: Build
+        run: npm run build-prod
+      - name: Archive Production Artifact
+        uses: actions/upload-artifact@master
+        with:
+          name: dist
+          path: dist
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@master
+      - name: Download Artifact
+        uses: actions/download-artifact@master
+        with:
+          name: dist
+          path: dist
+      - name: Deploy to Firebase
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only hosting
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+```
+Alternatively:
+
+```yaml
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+```
+
+
+If you have multiple hosting environments you can specify which one in the args line.
+e.g. `args: deploy --only hosting:[environment name]`
+
+If you want to add a message to a deployment (e.g. the Git commit message) you need to take extra care and escape the quotes or the YAML breaks.
+
+```yaml
+        with:
+          args: deploy --message \"${{ github.event.head_commit.message }}\"
+```
+
+## Alternate versions
+
+Starting with version v2.1.2 each version release will point to a versioned docker image allowing for hardening our pipeline (so things don't break when I do something dump). On top of this, you can also point to a `master` version if you would like to test out what might not be deployed into a release yet by using something like this:
+
+```yaml
+  name: Deploy to Firebase
+  uses: docker://w9jds/firebase-action:master
+  with:
+    args: deploy --only hosting
+  env:
+    FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+```
+
+## License
+
+The Dockerfile and associated scripts and documentation in this project are released under the [MIT License](LICENSE).
+
+
+### Recommendation
+
+If you decide to do seperate jobs for build and deployment (which is probably advisable), then make sure to clone your repo as the Firebase-cli requires the firebase repo to deploy (specifically the `firebase.json`)
 
 ## Privacy
 
