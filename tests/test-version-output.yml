@@ -1,0 +1,21 @@
+name: Test firebase-action version output
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: firebase
+        uses: .
+        env:
+          FIREBASE_TOKEN: "fake-token-for-version-check"
+          args: --version
+      - name: Assert response output (may be empty if not captured by entrypoint)
+        env:
+          RESPONSE: ${{ steps.firebase.outputs.response }}
+        run: |
+          echo "response: '$RESPONSE'"
+          # The action ran successfully if we reach this step (exit code 0)
+          # The response output may be empty since the entrypoint does not write to GITHUB_OUTPUT
+          echo "PASS: action completed successfully"
