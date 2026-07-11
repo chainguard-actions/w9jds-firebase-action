@@ -1,0 +1,24 @@
+name: Test GCP service account key path
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          args: --version
+        env:
+          GCP_SA_KEY: '{"type":"service_account","project_id":"test-project","private_key_id":"key123","private_key":"fake","client_email":"test@test-project.iam.gserviceaccount.com","client_id":"123","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token"}'
+      - name: Assert action succeeded with GCP_SA_KEY
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected action to succeed when GCP_SA_KEY is provided and running --version"
+            exit 1
+          fi
+          echo "PASS: firebase --version ran successfully with GCP_SA_KEY"
