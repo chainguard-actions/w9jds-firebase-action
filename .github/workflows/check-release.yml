@@ -68,13 +68,13 @@ jobs:
 
       - name: Remove leading 'v' from version numbers
         env:
-          FIREBASE_ACTIONS_RELEASE: ${{ needs.check-releases.outputs.firebase-actions-release }}
-          FIREBASE_TOOLS_RELEASE: ${{ needs.check-releases.outputs.firebase-tools-release }}
+          FIREBASE_ACTIONS_RELEASE_RAW: ${{ needs.check-releases.outputs.firebase-actions-release }}
+          FIREBASE_TOOLS_RELEASE_RAW: ${{ needs.check-releases.outputs.firebase-tools-release }}
         run: |
-          safe_actions_release=$(printf '%s' "${FIREBASE_ACTIONS_RELEASE#v}" | tr -d '\n\r')
-          safe_tools_release=$(printf '%s' "${FIREBASE_TOOLS_RELEASE#v}" | tr -d '\n\r')
-          echo "FIREBASE_ACTIONS_RELEASE=${safe_actions_release}" >> "$GITHUB_ENV"
-          echo "FIREBASE_TOOLS_RELEASE=${safe_tools_release}" >> "$GITHUB_ENV"
+          safe_actions=$(printf '%s' "${FIREBASE_ACTIONS_RELEASE_RAW#v}" | tr -d '\n\r')
+          safe_tools=$(printf '%s' "${FIREBASE_TOOLS_RELEASE_RAW#v}" | tr -d '\n\r')
+          echo "FIREBASE_ACTIONS_RELEASE=${safe_actions}" >> "$GITHUB_ENV"
+          echo "FIREBASE_TOOLS_RELEASE=${safe_tools}" >> "$GITHUB_ENV"
 
       - name: Bump version
         id: bump-version
