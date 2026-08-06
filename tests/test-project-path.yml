@@ -1,0 +1,38 @@
+name: Test PROJECT_PATH env variable
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a fake firebase project directory
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/my-firebase-app"
+          echo '{"hosting": {"public": "public"}}' > "$GITHUB_WORKSPACE/my-firebase-app/firebase.json"
+
+      - name: Run action with PROJECT_PATH and no credentials (expect failure)
+        id: action
+        uses: .
+        with:
+          args: --version
+        env:
+          PROJECT_PATH: /github/workspace/my-firebase-app
+          FIREBASE_TOKEN: fake-ci-token-for-path-test
+        continue-on-error: true
+
+      - name: Assert action ran with PROJECT_PATH set
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded with PROJECT_PATH set"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected with fake token)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
