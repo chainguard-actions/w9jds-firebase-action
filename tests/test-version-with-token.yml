@@ -1,6 +1,7 @@
-name: Test firebase --version with token
+name: Test firebase --version with FIREBASE_TOKEN
 on:
   workflow_dispatch:
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -23,4 +24,4 @@ jobs:
             echo "FAIL: expected action to succeed when running firebase --version with a token set"
             exit 1
           fi
-          echo "PASS: action succeeded with firebase --version"
+          echo "PASS: action succeeded running firebase --version"
