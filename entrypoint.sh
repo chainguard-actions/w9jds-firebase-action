@@ -31,10 +31,10 @@ fi
 
 if [ -n "$CONFIG_VALUES" ]; then
     echo "Setting config for function"
-    printf '%s\n' "$CONFIG_VALUES" | xargs firebase functions:config:set
+    firebase functions:config:set $CONFIG_VALUES
 fi
 
-exec firebase "$@"
+sh -c "firebase $*"
 
 # response=$(firebase $*)
 

@@ -1,0 +1,23 @@
+name: Test firebase help command with valid token
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run firebase --help with a dummy token
+        id: action
+        uses: .
+        # The action's default CMD is ["--help"], so no args needed.
+        # FIREBASE_TOKEN satisfies the auth check; --help does not call Firebase APIs.
+        env:
+          FIREBASE_TOKEN: "dummy-token-for-help"
+      - name: Assert action succeeded
+        run: |
+          echo "outcome: ${{ steps.action.outcome }}"
+          if [ "${{ steps.action.outcome }}" != "success" ]; then
+            echo "FAIL: expected action to succeed when running firebase --help"
+            exit 1
+          fi
+          echo "PASS: firebase --help ran successfully"
