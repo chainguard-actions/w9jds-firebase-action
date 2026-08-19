@@ -1,0 +1,29 @@
+name: Test GCP service account key authentication
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create a fake GCP SA key JSON
+        run: |
+          echo '{"type":"service_account","project_id":"test-project","private_key_id":"key123","private_key":"-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xHn/ygWep4PAtEsHAqKFPmBFuFNBMEHBMGHN\n-----END RSA PRIVATE KEY-----\n","client_email":"test@test-project.iam.gserviceaccount.com","client_id":"123456789","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token"}' > /tmp/fake-sa-key.json
+          echo "GCP_SA_KEY=$(cat /tmp/fake-sa-key.json)" >> $GITHUB_ENV
+      - name: Run firebase --version with GCP SA key
+        id: action
+        uses: .
+        with:
+          args: --version
+        env:
+          GCP_SA_KEY: ${{ env.GCP_SA_KEY }}
+      - name: Assert action succeeded
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected action to succeed when running firebase --version with GCP_SA_KEY"
+            exit 1
+          fi
+          echo "PASS: firebase --version ran successfully with GCP_SA_KEY"

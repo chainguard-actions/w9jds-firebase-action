@@ -1,0 +1,162 @@
+name: Check for firebase-tools releases
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  check-releases:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      # A semver comparison result - We are the base, firebase-tools is the compare-to
+      comparison: ${{ steps.compare_versions.outputs.comparison-result }}
+      firebase-actions-release: ${{ fromJSON(steps.get_our_release.outputs.data).tag_name }}
+      firebase-tools-release: ${{ fromJSON(steps.get_their_release.outputs.data).tag_name }}
+
+    steps:
+      - name: Check our latest release
+        uses: octokit/request-action@02f5e7c637a73a3b12ed81015fa7fb5f11cc5d7d # v2.x
+        id: get_our_release
+        with:
+          route: GET /repos/${{ github.REPOSITORY }}/releases/latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check latest firebase-tools release
+        uses: octokit/request-action@02f5e7c637a73a3b12ed81015fa7fb5f11cc5d7d # v2.x
+        id: get_their_release
+        with:
+          route: GET /repos/firebase/firebase-tools/releases/latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: madhead/semver-utils@4cf918affe9106ea59f86c6250e5ec4570ac4389 # latest
+        id: compare_versions
+        with:
+          # A version to work with
+          version: "${{ fromJSON(steps.get_our_release.outputs.data).tag_name }}"
+          # A version to compare against
+          compare-to: "${{ fromJSON(steps.get_their_release.outputs.data).tag_name }}"
+
+      # - name: Print our release version
+      #   run: echo "Our latest release is ${{ fromJSON(steps.get_our_release.outputs.data).tag_name }}"
+      # - name: Print their release version
+      #   run: echo "Their latest release is ${{ fromJSON(steps.get_their_release.outputs.data).tag_name }}"
+      # - name: Print the result
+      #   run: echo "${{ fromJSON(steps.get_our_release.outputs.data).tag_name }} ${{ steps.compare_versions.outputs.comparison-result }} ${{ fromJSON(steps.get_their_release.outputs.data).tag_name }}"
+
+  bump-version:
+    needs: check-releases
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+
+    outputs:
+      new-version: ${{  needs.check-releases.outputs.firebase-tools-release }}
+
+    if: ${{ needs.check-releases.outputs.comparison == '<' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: "master"
+
+      - name: Remove leading 'v' from version numbers
+        env:
+          FIREBASE_ACTIONS_RELEASE_RAW: ${{ needs.check-releases.outputs.firebase-actions-release }}
+          FIREBASE_TOOLS_RELEASE_RAW: ${{ needs.check-releases.outputs.firebase-tools-release }}
+        run: |
+          safe_actions=$(printf '%s' "$FIREBASE_ACTIONS_RELEASE_RAW" | tr -d '\n\r')
+          safe_tools=$(printf '%s' "$FIREBASE_TOOLS_RELEASE_RAW" | tr -d '\n\r')
+          echo "FIREBASE_ACTIONS_RELEASE=${safe_actions#v}" >> "$GITHUB_ENV"
+          echo "FIREBASE_TOOLS_RELEASE=${safe_tools#v}" >> "$GITHUB_ENV"
+
+      - name: Bump version
+        id: bump-version
+        uses: jacobtomlinson/gha-find-replace@2ff30f644d2e0078fc028beb9193f5ff0dcad39e # v3
+        with:
+          find: "${{ env.FIREBASE_ACTIONS_RELEASE }}"
+          replace: "${{ env.FIREBASE_TOOLS_RELEASE }}"
+          include: "{Dockerfile,action.yaml}"
+          regex: false
+
+      # - id: set-version
+      #   run: echo "version=${{env.FIREBASE_TOOLS_RELEASE}}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit & Push changes
+        if: ${{ steps.bump-version.outputs.modifiedFiles > 0 }}
+        env:
+          FIREBASE_TOOLS_RELEASE: ${{ needs.check-releases.outputs.firebase-tools-release }}
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit -a -m "Bump firebase-tools to $FIREBASE_TOOLS_RELEASE"
+          git tag -a "$FIREBASE_TOOLS_RELEASE" -m "Bump firebase-tools to $FIREBASE_TOOLS_RELEASE"
+          git push origin HEAD:master --tags
+
+      - name: Create Release
+        id: create_release
+        uses: comnoco/create-release-action@7dea6dc82ac9d97ced7a764aa82811451bba80e0 # v2.0.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }} # Can't use a GITHUB_TOKEN for this or other actions won't be triggered on a new release
+        with:
+          tag_name: ${{ needs.check-releases.outputs.firebase-tools-release }}
+          release_name: firebase-tools ${{ needs.check-releases.outputs.firebase-tools-release }}
+          body: "Bump `firebase-tools` to ${{ needs.check-releases.outputs.firebase-tools-release }}"
+          draft: false
+          prerelease: false
+
+  publish:
+    name: Docker build & push
+    needs: bump-version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    -
+      name: Check out the repo
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      with:
+        ref: ${{ needs.bump-version.outputs.new-version }}
+
+    -
+      name: Get Docker Metadata
+      id: meta
+      uses: docker/metadata-action@818d4b7b91585d195f67373fd9cb0332e31a7175 # v4
+      with:
+        tags: |
+          ${{ needs.bump-version.outputs.new-version }}
+          latest
+        images: |
+          w9jds/firebase-action
+          ghcr.io/${{ github.repository }}
+
+    -
+      name: Login to Docker Hub
+      uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
+      with:
+        username: w9jds
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    -
+      name: Log in to the Container registry
+      uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.PACKAGES_TOKEN }}
+
+    - name: Build and push
+      uses: docker/build-push-action@1104d471370f9806843c095c1db02b5a90c5f8b6 # v3
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
