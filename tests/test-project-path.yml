@@ -1,0 +1,30 @@
+name: Test PROJECT_PATH environment variable
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create project subdirectory in workspace
+        run: mkdir -p "$GITHUB_WORKSPACE/firebase-project"
+      - id: firebase
+        uses: .
+        continue-on-error: true
+        env:
+          FIREBASE_TOKEN: "fake-token-for-testing"
+          PROJECT_PATH: "${{ github.workspace }}/firebase-project"
+          FIREBASE_CLI_TELEMETRY_OPTOUT: "1"
+          FIREBASE_SKIP_UPDATE_CHECK: "1"
+          CI: "true"
+      - name: Assert step completed with PROJECT_PATH set
+        env:
+          OUTCOME: ${{ steps.firebase.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: firebase action completed successfully with PROJECT_PATH set"
+          else
+            echo "FAIL: expected firebase action to succeed with PROJECT_PATH set, got outcome: $OUTCOME"
+            exit 1
+          fi

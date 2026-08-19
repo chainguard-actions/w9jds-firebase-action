@@ -12,4 +12,4 @@ outputs:
 
 runs:
   using: "docker"
-  image: "docker://w9jds/firebase-action@sha256:bbd3e753c68a922db946027dce342491753f1b33b71cb5321dfd4869acbcfbe3" # v15.16.0
+  image: "docker://w9jds/firebase-action:v15.16.0@sha256:bbd3e753c68a922db946027dce342491753f1b33b71cb5321dfd4869acbcfbe3"
