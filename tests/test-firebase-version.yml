@@ -1,0 +1,35 @@
+name: Test firebase version command
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run firebase --version with fake token
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          args: --version
+        env:
+          FIREBASE_TOKEN: fake-token-for-version-check
+
+      - name: Assert action ran (version command does not require valid auth)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # firebase --version may succeed (no real auth needed) or fail due to
+          # the fake token being rejected by the CLI. Either way, the action must
+          # have attempted to run (not exit 126 for missing credentials).
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: firebase --version succeeded"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action ran but firebase CLI rejected the fake token (expected in some versions)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

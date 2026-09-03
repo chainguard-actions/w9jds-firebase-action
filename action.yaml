@@ -1,0 +1,15 @@
+name: "GitHub Action for Firebase"
+author: "Jeremy Shore"
+description: "Wraps the firebase-tools CLI to enable common commands."
+
+branding:
+  icon: "package"
+  color: "gray-dark"
+
+outputs:
+  response:
+    description: "Response from the firebase command executed"
+
+runs:
+  using: "docker"
+  image: "docker://w9jds/firebase-action:v15.29.0@sha256:ccfd5bdab0dc1fe7bfa85657b0261348a7ffdf16661bf6bbe0102d636aa0bd56"
