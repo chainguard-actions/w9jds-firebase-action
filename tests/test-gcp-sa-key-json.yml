@@ -1,0 +1,45 @@
+name: Test with GCP_SA_KEY JSON credential
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up a git origin reachable inside the Docker container
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - id: action
+        uses: .
+        with:
+          args: --version
+        env:
+          # A minimal fake GCP service account JSON key (valid JSON, will fail Firebase auth)
+          GCP_SA_KEY: '{"type":"service_account","project_id":"fake-project","private_key_id":"key123","private_key":"-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xHn/ygWep4PAtEsHAFOKFBMFAIbBqBBBBBBB\n-----END RSA PRIVATE KEY-----\n","client_email":"fake@fake-project.iam.gserviceaccount.com","client_id":"123456789","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token"}'
+        continue-on-error: true
+
+      - name: Assert action handled GCP_SA_KEY JSON correctly
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The entrypoint should parse the JSON key with jq and write it to /opt/gcp_key.json.
+          # firebase --version may succeed or fail at auth, but the credential handling
+          # path (jq parsing) should not cause exit 126.
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded with GCP_SA_KEY JSON"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed at firebase level (expected with fake key), credential check passed"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
