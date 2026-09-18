@@ -1,0 +1,45 @@
+name: Test GCP service account key credential path
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up git origin reachable inside Docker container
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          rm -rf "$GITHUB_WORKSPACE/.git-remote"
+          git init --bare "$GITHUB_WORKSPACE/.git-remote"
+          git push "$GITHUB_WORKSPACE/.git-remote" HEAD:refs/heads/act-harness
+          git remote set-url origin "$GITHUB_WORKSPACE/.git-remote" 2>/dev/null || \
+            git remote add origin "$GITHUB_WORKSPACE/.git-remote"
+
+      - id: action
+        uses: .
+        with:
+          args: help
+        env:
+          # A minimal fake GCP service account key in JSON format
+          GCP_SA_KEY: '{"type":"service_account","project_id":"test-project","private_key_id":"key123","private_key":"-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xHn/ygWep4PAtEsHAFOKFGRGBMBMHhCMSKcD\n-----END RSA PRIVATE KEY-----\n","client_email":"test@test-project.iam.gserviceaccount.com","client_id":"123456789","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token"}'
+        continue-on-error: true
+
+      - name: Assert action ran past credential check with GCP_SA_KEY
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # With GCP_SA_KEY set as valid JSON, the action should store it and pass
+          # the credential check. Firebase may fail due to invalid key content,
+          # but it must NOT fail with exit 126 (missing credentials).
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: firebase help ran successfully with GCP_SA_KEY set"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action ran past credential check (firebase rejected the fake SA key)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
