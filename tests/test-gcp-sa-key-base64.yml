@@ -1,0 +1,29 @@
+name: Test GCP_SA_KEY as base64-encoded JSON
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Encode a dummy service account key
+        id: key
+        run: |
+          KEY=$(printf '%s' '{"type":"service_account","project_id":"dummy-project"}' | base64 -w0)
+          echo "value=$KEY" >> "$GITHUB_OUTPUT"
+      - id: action
+        uses: .
+        with:
+          args: --version
+        env:
+          GCP_SA_KEY: ${{ steps.key.outputs.value }}
+      - name: Assert action succeeded
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          echo "PASS"
